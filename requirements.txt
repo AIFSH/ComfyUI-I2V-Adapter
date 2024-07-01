@@ -1,4 +1,4 @@
-diffusers
+diffusers==0.11.1
 transformers
 imageio
 decord
@@ -7,3 +7,6 @@ einops
 omegaconf
 safetensors
 wandb
+opencv-python
+accelerate
+imageio[ffmpeg]

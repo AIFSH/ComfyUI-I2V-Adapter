@@ -47,13 +47,13 @@ class LoraPathLoader:
     def INPUT_TYPES(s):
         return {"required": { 
             "lora_name": (folder_paths.get_filename_list("loras"), ),
-            "lora_weight":{"FLOAT",{
+            "lora_weight":("FLOAT",{
                 "min":0.,
                 "max":1.0,
                 "step":0.01,
                 "default":0.8,
                 "display":"silder"
-            }}
+            })
             }}
     RETURN_TYPES = ("LORAMODULE",)
     FUNCTION = "load_checkpoint"
@@ -75,14 +75,14 @@ class MotionLoraLoader:
         return {
             "required":{
                 "motion_type":(["PanLeft","PanRight","RollingAnticlockwise",
-                               "RollingClockwise","TiltDown","TiltUp","ZoomIn","ZoomOut"]),
-                "motion_wight":{"FLOAT",{
+                               "RollingClockwise","TiltDown","TiltUp","ZoomIn","ZoomOut"],),
+                "motion_wight":("FLOAT",{
                     "min":0.,
                     "max":1.0,
                     "step":0.01,
                     "default":0.8,
                     "display":"silder"
-                }}
+                })
             }
         }
     
@@ -97,27 +97,56 @@ class MotionLoraLoader:
         motion_path = os.path.join(motion_local_dir, filename)
         if not os.path.isfile(motion_path):
             hf_hub_download(repo_id="guoyww/animatediff",filename=filename,local_dir=motion_local_dir)
-        motion_module = {
+        motion_module = [{
             "path":motion_path,
             "alpha":motion_wight
-        }
+        }]
         return (motion_module,)
+    
+class PreViewVideo:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required":{
+            "video":("VIDEO",),
+        }}
+    
+    CATEGORY = "AIFSH_I2V-Adapter"
+    DESCRIPTION = "hello world!"
+
+    RETURN_TYPES = ()
+
+    OUTPUT_NODE = True
+
+    FUNCTION = "load_video"
+
+    def load_video(self, video):
+        video_name = os.path.basename(video)
+        video_path_name = os.path.basename(os.path.dirname(video))
+        return {"ui":{"video":[video_name,video_path_name]}}
 
 class I2V_AdapterNode:
+
     def __init__(self):
+        self.pipe = None
         # jcplus/stable-diffusion-v1-5
-        snapshot_download(repo_id="jcplus/stable-diffusion-v1-5",local_dir=pretrained_model_path)
+        snapshot_download(repo_id="runwayml/stable-diffusion-v1-5",local_dir=pretrained_model_path,
+                          ignore_patterns=["*-pruned*","*.bin","*fp16*","*ckpt","*non_ema*"])
         # space-xun/i2v_adapter
         if not os.path.isfile(os.path.join(I2V_Adapter_dir,"i2v_module.pth")):
             snapshot_download(repo_id="space-xun/i2v_adapter",local_dir=I2V_Adapter_dir)
             # move animatediff_v15_v1_ipplus.pth
             shutil.move(os.path.join(I2V_Adapter_dir,"animatediff_v15_v1_ipplus.pth"),os.path.join(pretrained_model_path,"unet","animatediff_v15_v1_ipplus.pth"))
         # h94/IP-Adapter
-        snapshot_download(repo_id="h94/IP-Adapter",local_dir=os.path.join(ckpts_dir,"IP-Adapter"),allow_patterns=["ip-adapter-plus_sd15.bin","image_encoder/*","*.json","*.bin"])
+        hf_hub_download(repo_id="h94/IP-Adapter",filename="ip-adapter-plus_sd15.bin",subfolder="models",local_dir=os.path.join(ckpts_dir,"IP-Adapter"))
+        # hf_hub_download(repo_id="h94/IP-Adapter",filename="config.json",subfolder="models/image_encoder",local_dir=os.path.join(ckpts_dir,"IP-Adapter"))
+        # hf_hub_download(repo_id="h94/IP-Adapter",filename="pytorch_model.bin",subfolder="models/image_encoder",local_dir=os.path.join(ckpts_dir,"IP-Adapter"))
+        
+        snapshot_download(repo_id="h94/IP-Adapter",local_dir=os.path.join(ckpts_dir,"IP-Adapter"),allow_patterns=["models/*","pytorch_model.bin"],ignore_patterns=["*.safetensors","*adapter*"])
+    
     @classmethod
     def INPUT_TYPES(s):
         return {
-            "require":{
+            "required":{
                 "image":("IMAGE",),
                 "prompt":("TEXT",),
                 "neg_prompt":("TEXT",),
@@ -136,11 +165,13 @@ class I2V_AdapterNode:
                 "cfg":("FLOAT",{
                     "default": 7.5,
                 }),
-                "seed":("INT",)
+                "seed":("INT",{
+                    "default":42
+                })
             },
             "optional":{
                 "lora_module": ("LORAMODULE",),
-                "motion_lora_path":("MOTIONLORA",),
+                "motion_lora":("MOTIONLORA",),
             }
         }
     
@@ -154,54 +185,61 @@ class I2V_AdapterNode:
     CATEGORY = "AIFSH_I2V-Adapter"
 
     def gen_video(self,image,prompt,neg_prompt,resolution,video_length,fps,
-                  num_inference_steps,cfg,seed,lora_module=None,motion_lora_path=None):
+                  num_inference_steps,cfg,seed,lora_module=None,motion_lora=None):
         image_np = image.numpy()[0] * 255
         image_np = image_np.astype(np.uint8)
         # load models
         inference_config = OmegaConf.load(os.path.join(now_dir,"infer.yaml"))
         global_seed = seed
 
-        unet = UNet3DConditionModel.from_pretrained_ip(pretrained_model_path, subfolder="unet",
-                                                        unet_additional_kwargs=OmegaConf.to_container(inference_config.unet_additional_kwargs)).to(torch.float16).to(device)
-        vae = AutoencoderKL.from_pretrained(pretrained_model_path, subfolder="vae", torch_dtype=torch.float16).to(device)
-        tokenizer = CLIPTokenizer.from_pretrained(pretrained_model_path, subfolder="tokenizer", torch_dtype=torch.float16)
-        text_encoder = CLIPTextModel.from_pretrained(pretrained_model_path, subfolder="text_encoder", torch_dtype=torch.float16).to(device)
-        clip_image_processor = CLIPImageProcessor()
-        image_encoder = CLIPVisionModelWithProjection.from_pretrained(pretrained_image_encoder_path, torch_dtype=torch.float16).to(device)
-        image_proj_model = Resampler(
-                dim=768,
-                depth=4,
-                dim_head=64,
-                heads=12,
-                num_queries=16,
-                embedding_dim=image_encoder.config.hidden_size,
-                output_dim=768,
-                ff_mult=4
-            )
-        image_proj_model.load_state_dict(torch.load(pretrained_ipadapter_path, "cpu")["image_proj"], strict=True)
-        image_proj_model.to(torch.float16).to(device)
-        print("Load pretrained clip image encoder and ipadapter model successfully")
-        
-        if is_xformers_available():
-            unet.enable_xformers_memory_efficient_attention()
-        vae.requires_grad_(False)
-        text_encoder.requires_grad_(False)
-        unet.requires_grad_(False)
-        image_encoder.requires_grad_(False)
-        image_proj_model.requires_grad_(False)
+        if self.pipe is None:
+            unet = UNet3DConditionModel.from_pretrained_ip(pretrained_model_path, subfolder="unet",
+                                                            unet_additional_kwargs=OmegaConf.to_container(inference_config.unet_additional_kwargs)).to(torch.float16).to(device)
+            vae = AutoencoderKL.from_pretrained(pretrained_model_path, subfolder="vae", torch_dtype=torch.float16).to(device)
+            tokenizer = CLIPTokenizer.from_pretrained(pretrained_model_path, subfolder="tokenizer", torch_dtype=torch.float16)
+            text_encoder = CLIPTextModel.from_pretrained(pretrained_model_path, subfolder="text_encoder", torch_dtype=torch.float16).to(device)
+            clip_image_processor = CLIPImageProcessor()
+            image_encoder = CLIPVisionModelWithProjection.from_pretrained(pretrained_image_encoder_path, torch_dtype=torch.float16).to(device)
+            image_proj_model = Resampler(
+                    dim=768,
+                    depth=4,
+                    dim_head=64,
+                    heads=12,
+                    num_queries=16,
+                    embedding_dim=image_encoder.config.hidden_size,
+                    output_dim=768,
+                    ff_mult=4
+                )
+            image_proj_model.load_state_dict(torch.load(pretrained_ipadapter_path, "cpu")["image_proj"], strict=True)
+            image_proj_model.to(torch.float16).to(device)
+            print("Load pretrained clip image encoder and ipadapter model successfully")
+            
+            
+            if is_xformers_available():
+                unet.enable_xformers_memory_efficient_attention()
+                
+            vae.requires_grad_(False)
+            text_encoder.requires_grad_(False)
+            unet.requires_grad_(False)
+            image_encoder.requires_grad_(False)
+            image_proj_model.requires_grad_(False)
 
-        # builds pipeline
-        noise_scheduler = DDIMScheduler(**OmegaConf.to_container(inference_config.noise_scheduler_kwargs))
-        pipe = I2VIPAdapterPipeline(vae=vae, text_encoder=text_encoder, tokenizer=tokenizer, unet=unet, 
-                                    scheduler=noise_scheduler)
-        if motion_lora_path:
-            motion_module_lora_configs = inference_config.motion_module_lora_configs
-        
-        pipe = load_weights(pipe, 
+            # builds pipeline
+            noise_scheduler = DDIMScheduler(**OmegaConf.to_container(inference_config.noise_scheduler_kwargs))
+            self.pipe = I2VIPAdapterPipeline(vae=vae, text_encoder=text_encoder, tokenizer=tokenizer, unet=unet, 
+                                        scheduler=noise_scheduler)
+
+
+
+        if lora_module is None:
+            lora_module = {
+                "lora_model_path":"",
+                "lora_alpha":0.8,
+            }
+        pipe = load_weights(self.pipe, 
                             i2v_module_path=i2v_module_path,
-                            motion_module_path=motion_lora_path,
-                            motion_module_lora_configs=motion_module_lora_configs if motion_lora_path else [],
-                            **lora_module if lora_module else None)
+                            motion_module_lora_configs=motion_lora if motion_lora else [],
+                            **lora_module)
         pipe.to(torch.float16).to(device)
         pipe.enable_vae_slicing()
 

@@ -211,7 +211,7 @@ def load_weights(
                 
         animation_pipeline = convert_lora(animation_pipeline, lora_state_dict, alpha=lora_alpha)
         del lora_state_dict
-
+    
     if i2v_module_path != "":
         # 2. i2v module
         print(f"load i2v module from {i2v_module_path}")

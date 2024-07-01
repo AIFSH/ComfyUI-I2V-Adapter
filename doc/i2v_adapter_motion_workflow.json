@@ -1,0 +1,294 @@
+{
+  "last_node_id": 10,
+  "last_link_id": 7,
+  "nodes": [
+    {
+      "id": 8,
+      "type": "PromptNode",
+      "pos": [
+        460,
+        437
+      ],
+      "size": {
+        "0": 400,
+        "1": 200
+      },
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "TEXT",
+          "type": "TEXT",
+          "links": [
+            3
+          ],
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PromptNode"
+      },
+      "widgets_values": [
+        "worst quality, low quality, normal quality, lowres, bad anatomy, bad hands, watermark, moles"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "PreViewVideo",
+      "pos": [
+        985,
+        94
+      ],
+      "size": {
+        "0": 210,
+        "1": 230
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 6
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreViewVideo"
+      },
+      "widgets_values": [
+        {
+          "hidden": false,
+          "paused": false,
+          "params": {}
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "LoadImage",
+      "pos": [
+        59,
+        42
+      ],
+      "size": {
+        "0": 315,
+        "1": 314
+      },
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            1
+          ],
+          "shape": 3
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "test.png",
+        "image"
+      ]
+    },
+    {
+      "id": 6,
+      "type": "I2V_AdapterNode",
+      "pos": [
+        534,
+        71
+      ],
+      "size": {
+        "0": 315,
+        "1": 282
+      },
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 1,
+          "slot_index": 0
+        },
+        {
+          "name": "prompt",
+          "type": "TEXT",
+          "link": 2
+        },
+        {
+          "name": "neg_prompt",
+          "type": "TEXT",
+          "link": 3,
+          "slot_index": 2
+        },
+        {
+          "name": "lora_module",
+          "type": "LORAMODULE",
+          "link": null,
+          "slot_index": 3
+        },
+        {
+          "name": "motion_lora",
+          "type": "MOTIONLORA",
+          "link": 7,
+          "slot_index": 4
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            6
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "I2V_AdapterNode"
+      },
+      "widgets_values": [
+        512,
+        16,
+        8,
+        25,
+        7.5,
+        1284,
+        "randomize"
+      ]
+    },
+    {
+      "id": 10,
+      "type": "MotionLoraLoader",
+      "pos": [
+        926,
+        404
+      ],
+      "size": {
+        "0": 315,
+        "1": 82
+      },
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "MOTIONLORA",
+          "type": "MOTIONLORA",
+          "links": [
+            7
+          ],
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MotionLoraLoader"
+      },
+      "widgets_values": [
+        "PanLeft",
+        0.8
+      ]
+    },
+    {
+      "id": 1,
+      "type": "PromptNode",
+      "pos": [
+        15,
+        407
+      ],
+      "size": {
+        "0": 400,
+        "1": 200
+      },
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "TEXT",
+          "type": "TEXT",
+          "links": [
+            2
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PromptNode"
+      },
+      "widgets_values": [
+        "an anime girl with long brown hair hugging a white cat,pan left"
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      7,
+      0,
+      6,
+      0,
+      "IMAGE"
+    ],
+    [
+      2,
+      1,
+      0,
+      6,
+      1,
+      "TEXT"
+    ],
+    [
+      3,
+      8,
+      0,
+      6,
+      2,
+      "TEXT"
+    ],
+    [
+      6,
+      6,
+      0,
+      4,
+      0,
+      "VIDEO"
+    ],
+    [
+      7,
+      10,
+      0,
+      6,
+      4,
+      "MOTIONLORA"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 1,
+      "offset": [
+        0,
+        0
+      ]
+    }
+  },
+  "version": 0.4
+}

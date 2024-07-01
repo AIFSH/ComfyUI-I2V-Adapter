@@ -34,16 +34,28 @@ def convert_motion_lora_ckpt_to_diffusers(pipeline, state_dict, alpha=1.0):
         up_key    = key.replace(".down.", ".up.")
         model_key = key.replace("processor.", "").replace("_lora", "").replace("down.", "").replace("up.", "")
         model_key = model_key.replace("to_out.", "to_out.0.")
-        layer_infos = model_key.split(".")[:-1]
+        layer_infos = model_key.split(".")
 
+        # print(model_key)
+        # print(layer_infos)
         curr_layer = pipeline.unet
         while len(layer_infos) > 0:
             temp_name = layer_infos.pop(0)
-            curr_layer = curr_layer.__getattr__(temp_name)
+            # print(temp_name)
+            if temp_name == 'weight':
+                break
+            try:
+                curr_layer = curr_layer.__getattr__(temp_name)
+            except:
+                break
+            
 
         weight_down = state_dict[key]
         weight_up   = state_dict[up_key]
-        curr_layer.weight.data += alpha * torch.mm(weight_up, weight_down).to(curr_layer.weight.data.device)
+        try:
+            curr_layer.weight.data += alpha * torch.mm(weight_up, weight_down).to(curr_layer.weight.data.device)
+        except:
+            pass
 
     return pipeline
 
