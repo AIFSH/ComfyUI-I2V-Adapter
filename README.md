@@ -6,7 +6,7 @@ a comfyui custom node for [I2V-Adapter](https://github.com/KwaiVGI/I2V-Adapter),
 - input
 <div>
   <figure>
-  <img alt='Wechat' src="./doc/test.png?raw=true" width="300px"/>
+  <img alt='Wechat' src="./doc/test.png?raw=true" width="512px"/>
   <figure>
 </div>
 
@@ -16,9 +16,8 @@ an anime girl with long brown hair hugging a white cat
 ```
 
 - output
-<div>
-  <video controls src="./doc/i2v_adapter_1719839716891011400.mp4?raw=true" width="300px"/>
-</div>
+
+https://github.com/AIFSH/ComfyUI-I2V-Adapter/assets/149982694/203d8812-1d14-422b-89a9-3b24e53455dc
 
 ## How to use
 make sure `ffmpeg` is worked in your commandline
