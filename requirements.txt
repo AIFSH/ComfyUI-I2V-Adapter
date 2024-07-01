@@ -1,0 +1,9 @@
+diffusers
+transformers
+imageio
+decord
+gdown
+einops
+omegaconf
+safetensors
+wandb
