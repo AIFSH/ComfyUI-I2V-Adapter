@@ -42,6 +42,7 @@ weights will be downloaded from huggingface
 
 ## Tutorial
 - [Demo]()
+- QQ群：852228202
 
 ## Thanks
 [I2V-Adapter](https://github.com/KwaiVGI/I2V-Adapter)
